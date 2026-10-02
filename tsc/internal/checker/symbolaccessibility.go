@@ -207,21 +207,67 @@ func (c *Checker) getAlternativeContainingModules(symbol *ast.Symbol, enclosingD
 	if links.extendedContainers != nil {
 		return *links.extendedContainers
 	}
-	// No results from files already being imported by this file - expand search (expensive, but not location-specific, so cached)
-	otherFiles := c.program.SourceFiles()
-	for _, file := range otherFiles {
+	// No results from files already being imported by this file - expand search (not location-specific, so cached).
+	// Equivalent to calling getAliasForSymbolInContainer on every module in the program, answered from an index
+	// of module exports built once per checker rather than by scanning every module's exports per symbol.
+	index := c.getModuleExportsIndex()
+	positions := index.byTarget[c.getSameReferenceKey(symbol)]
+	// getAliasForSymbolInContainer also matches the symbol's own parent, whether or not it exports the symbol.
+	if p, ok := index.position[c.getParentOfSymbol(symbol)]; ok {
+		if at, found := slices.BinarySearch(positions, p); !found {
+			positions = slices.Insert(slices.Clone(positions), at, p)
+		}
+	}
+	results = core.Map(positions, func(p int) *ast.Symbol { return index.modules[p] })
+	links.extendedContainers = &results
+	return results
+}
+
+// moduleExportsIndex maps the target of every module export in the program to the modules that export it.
+type moduleExportsIndex struct {
+	modules  []*ast.Symbol         // External module symbols in program file order
+	position map[*ast.Symbol]int   // Module symbol -> its index in modules
+	byTarget map[*ast.Symbol][]int // getSameReferenceKey of an export -> ascending indices of the modules exporting it
+}
+
+func (c *Checker) getSameReferenceKey(symbol *ast.Symbol) *ast.Symbol {
+	return c.getMergedSymbol(c.resolveSymbol(c.getMergedSymbol(symbol)))
+}
+
+func (c *Checker) getModuleExportsIndex() *moduleExportsIndex {
+	if c.moduleExportsIndex != nil {
+		return c.moduleExportsIndex
+	}
+	index := &moduleExportsIndex{
+		position: make(map[*ast.Symbol]int),
+		byTarget: make(map[*ast.Symbol][]int),
+	}
+	add := func(target *ast.Symbol, i int) {
+		positions := index.byTarget[target]
+		if len(positions) == 0 || positions[len(positions)-1] != i {
+			index.byTarget[target] = append(positions, i)
+		}
+	}
+	for _, file := range c.program.SourceFiles() {
 		if !ast.IsExternalModule(file) {
 			continue
 		}
 		sym := c.getSymbolOfDeclaration(file.AsNode())
-		ref := c.getAliasForSymbolInContainer(sym, symbol)
-		if ref == nil {
-			continue
+		i := len(index.modules)
+		index.modules = append(index.modules, sym)
+		index.position[sym] = i
+		// Same checks as getAliasForSymbolInContainer: an `export =` of the symbol, or an export that is the same reference.
+		if sym.Exports != nil {
+			if exportEquals, ok := sym.Exports[ast.InternalSymbolNameExportEquals]; ok && exportEquals != nil {
+				add(c.getSameReferenceKey(exportEquals), i)
+			}
 		}
-		results = append(results, sym)
+		for _, exported := range c.getExportsOfSymbol(sym) {
+			add(c.getSameReferenceKey(exported), i)
+		}
 	}
-	links.extendedContainers = &results
-	return results
+	c.moduleExportsIndex = index
+	return index
 }
 
 func (c *Checker) getVariableDeclarationOfObjectLiteral(symbol *ast.Symbol, meaning ast.SymbolFlags) *ast.Symbol {

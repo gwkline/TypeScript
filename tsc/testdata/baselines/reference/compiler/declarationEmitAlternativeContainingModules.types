@@ -1,0 +1,71 @@
+//// [tests/cases/compiler/declarationEmitAlternativeContainingModules.ts] ////
+
+=== /node_modules/shapes/internal.d.ts ===
+export interface Shape {
+    kind: string;
+>kind : string
+}
+export declare function makeShape(): Shape;
+>makeShape : () => Shape
+
+=== /node_modules/shapes/index.d.ts ===
+export { makeShape } from "./internal";
+>makeShape : () => import("./internal").Shape
+
+export type { Shape } from "./internal";
+>Shape : import("./internal").Shape
+
+=== /node_modules/shapes/aliased.d.ts ===
+export { Shape as RenamedShape } from "./internal";
+>Shape : any
+>RenamedShape : any
+
+=== /node_modules/legacy/index.d.ts ===
+declare namespace legacy {
+    interface Options {
+        verbose: boolean;
+>verbose : boolean
+    }
+}
+declare function legacy(): legacy.Options;
+>legacy : () => legacy.Options
+>legacy : any
+
+export = legacy;
+>legacy : () => legacy.Options
+
+=== /node_modules/factory/index.d.ts ===
+import legacy = require("legacy");
+>legacy : () => legacy.Options
+
+export { makeShape as create } from "shapes/internal";
+>makeShape : () => import("shapes/internal").Shape
+>create : () => import("shapes/internal").Shape
+
+export declare function makeLegacy(): legacy.Options;
+>makeLegacy : () => legacy.Options
+>legacy : any
+
+=== /index.ts ===
+import { create, makeLegacy } from "factory";
+>create : () => import("shapes").Shape
+>makeLegacy : () => import("legacy").Options
+
+export const shape = create();
+>shape : import("shapes").Shape
+>create() : import("shapes").Shape
+>create : () => import("shapes").Shape
+
+export const shapes = [create(), create()];
+>shapes : import("shapes").Shape[]
+>[create(), create()] : import("shapes").Shape[]
+>create() : import("shapes").Shape
+>create : () => import("shapes").Shape
+>create() : import("shapes").Shape
+>create : () => import("shapes").Shape
+
+export const options = makeLegacy();
+>options : import("legacy").Options
+>makeLegacy() : import("legacy").Options
+>makeLegacy : () => import("legacy").Options
+

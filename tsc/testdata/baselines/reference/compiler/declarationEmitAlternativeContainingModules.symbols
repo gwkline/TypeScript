@@ -1,0 +1,75 @@
+//// [tests/cases/compiler/declarationEmitAlternativeContainingModules.ts] ////
+
+=== /node_modules/shapes/internal.d.ts ===
+export interface Shape {
+>Shape : Symbol(Shape, Decl(internal.d.ts, 0, 0))
+
+    kind: string;
+>kind : Symbol(Shape.kind, Decl(internal.d.ts, 0, 24))
+}
+export declare function makeShape(): Shape;
+>makeShape : Symbol(makeShape, Decl(internal.d.ts, 2, 1))
+>Shape : Symbol(Shape, Decl(internal.d.ts, 0, 0))
+
+=== /node_modules/shapes/index.d.ts ===
+export { makeShape } from "./internal";
+>makeShape : Symbol(makeShape, Decl(index.d.ts, 0, 8))
+
+export type { Shape } from "./internal";
+>Shape : Symbol(Shape, Decl(index.d.ts, 1, 13))
+
+=== /node_modules/shapes/aliased.d.ts ===
+export { Shape as RenamedShape } from "./internal";
+>Shape : Symbol(Shape, Decl(internal.d.ts, 0, 0))
+>RenamedShape : Symbol(RenamedShape, Decl(aliased.d.ts, 0, 8))
+
+=== /node_modules/legacy/index.d.ts ===
+declare namespace legacy {
+>legacy : Symbol(legacy, Decl(index.d.ts, 4, 1), Decl(index.d.ts, 0, 0))
+
+    interface Options {
+>Options : Symbol(Options, Decl(index.d.ts, 0, 26))
+
+        verbose: boolean;
+>verbose : Symbol(Options.verbose, Decl(index.d.ts, 1, 23))
+    }
+}
+declare function legacy(): legacy.Options;
+>legacy : Symbol(legacy, Decl(index.d.ts, 4, 1), Decl(index.d.ts, 0, 0))
+>legacy : Symbol(legacy, Decl(index.d.ts, 4, 1), Decl(index.d.ts, 0, 0))
+>Options : Symbol(legacy.Options, Decl(index.d.ts, 0, 26))
+
+export = legacy;
+>legacy : Symbol(legacy, Decl(index.d.ts, 4, 1), Decl(index.d.ts, 0, 0))
+
+=== /node_modules/factory/index.d.ts ===
+import legacy = require("legacy");
+>legacy : Symbol(legacy, Decl(index.d.ts, 0, 0))
+
+export { makeShape as create } from "shapes/internal";
+>makeShape : Symbol(makeShape, Decl(internal.d.ts, 2, 1))
+>create : Symbol(create, Decl(index.d.ts, 1, 8))
+
+export declare function makeLegacy(): legacy.Options;
+>makeLegacy : Symbol(makeLegacy, Decl(index.d.ts, 1, 54))
+>legacy : Symbol(legacy, Decl(index.d.ts, 0, 0))
+>Options : Symbol(legacy.Options, Decl(index.d.ts, 0, 26))
+
+=== /index.ts ===
+import { create, makeLegacy } from "factory";
+>create : Symbol(create, Decl(index.ts, 0, 8))
+>makeLegacy : Symbol(makeLegacy, Decl(index.ts, 0, 16))
+
+export const shape = create();
+>shape : Symbol(shape, Decl(index.ts, 1, 12))
+>create : Symbol(create, Decl(index.ts, 0, 8))
+
+export const shapes = [create(), create()];
+>shapes : Symbol(shapes, Decl(index.ts, 2, 12))
+>create : Symbol(create, Decl(index.ts, 0, 8))
+>create : Symbol(create, Decl(index.ts, 0, 8))
+
+export const options = makeLegacy();
+>options : Symbol(options, Decl(index.ts, 3, 12))
+>makeLegacy : Symbol(makeLegacy, Decl(index.ts, 0, 16))
+
